@@ -79,6 +79,13 @@ NP2GDAL_CONVERSION = {
 doy8 = np.arange(1, 366, 8)
 doy1 = np.arange(1, 366, 1)
 
+
+def register_by_img(out_dts, src_dts):
+    data, proj, geot = img2numpy(src_dts, geoinfo=True)
+    data = img2numpy(out_dts)
+    numpy2img(out_dts, data, proj=proj, geot=geot)
+
+
 def outliner_rmse(x, y):
     m_square = (x - y) ** 2
     mean, outliner = np.mean(m_square), np.std(m_square) * 3
