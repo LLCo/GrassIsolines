@@ -8,26 +8,40 @@
     一些公用函数，如图像读取，输出
 '''
 
-from osgeo import gdal, osr
+from osgeo import gdal, osr, ogr
 import numpy as np
 import os
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr
 
 
-def reflectance2rgb(img, bgr=True):
+def raster2Polygon(rasterfile, shapefile):
+    dts = gdal.Open(rasterfile, gdal.GA_ReadOnly)
+    inband = dts.GetRasterBand(1)
+    drv = ogr.GetDriverByName('ESRI Shapefile')
+    Polygon = drv.CreateDataSource(shapefile)
+    prj = osr.SpatialReference()
+    prj.ImportFromWkt(dts.GetProjection()) ## 使用栅格的投影信息
+    Polygon_layer = Polygon.CreateLayer(shapefile, srs=prj, geom_type=ogr.wkbMultiPolygon)
+    newField = ogr.FieldDefn('Value', ogr.OFTInteger)
+    Polygon_layer.CreateField(newField)
+    gdal.FPolygonize(inband, inband, Polygon_layer, 0)
+
+def reflectance2rgb(img, bgr=True, func=False):
     '''
     将遥感的反射率影像归一化为可以显示的RGB影像
     Returns:
     '''
     img = np.copy(img)
-    top = np.percentile(img, 98)
-    bottom = np.percentile(img, 2)
+    top = np.nanpercentile(img, 98)
+    bottom = np.nanpercentile(img, 2)
     img[img > top] = top
     img[img < bottom] = bottom
     img = (img - bottom) / (top - bottom) * 255
     if bgr:
         img = img[::-1, :, :]
+    if func:
+        return img.astype(np.uint8), lambda x: (x - bottom) / (top - bottom) * 255
     return img.astype(np.uint8)
 
 
